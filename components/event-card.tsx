@@ -58,6 +58,11 @@ export function EventCard({
             <span className="rounded-full bg-[rgba(3,17,29,0.76)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white backdrop-blur">
               {event.category}
             </span>
+            {event.hiddenEvent || event.discoveredBy === "AI" ? (
+              <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#03111d]">
+                AI Found
+              </span>
+            ) : null}
             {event.recommended ? (
               <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white backdrop-blur">
                 Recommended

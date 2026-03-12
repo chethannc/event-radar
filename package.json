@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "discover:hidden": "powershell -ExecutionPolicy Bypass -File scripts/run-hidden-discovery.ps1"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

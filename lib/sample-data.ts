@@ -27,6 +27,12 @@ export type EventRecord = {
   ticketUrl: string;
   imageUrl: string;
   imageAlt: string;
+  source?: string;
+  sourceWebsite?: string;
+  discoveredBy?: string;
+  tags?: string[];
+  hiddenEvent?: boolean;
+  aiRank?: number;
   coordinates: {
     lat: number;
     lng: number;
@@ -266,7 +272,7 @@ export const sampleEvents: EventRecord[] = [
     price: "Rs 299",
     description:
       "A city running event with 1 mile, 3K, 5K, and 7K formats designed for casual runners and goal-driven weekend crews.",
-    attendees: 1600,
+    attendees: 160,
     popularity: 90,
     neighborhood: "Jakkur",
     highlight: "High-energy lakefront run",
@@ -292,7 +298,7 @@ export const sampleEvents: EventRecord[] = [
     price: "Rs 399",
     description:
       "A community-first forest run that mixes short distances, recovery zones, and a social post-run atmosphere.",
-    attendees: 2500,
+    attendees: 250,
     popularity: 93,
     neighborhood: "JP Nagar",
     highlight: "Community running crowd",
@@ -317,7 +323,7 @@ export const sampleEvents: EventRecord[] = [
     price: "Rs 299",
     description:
       "A scenic weekend lake run with family-friendly distance options and a softer pace for new runners.",
-    attendees: 1600,
+    attendees: 160,
     popularity: 89,
     neighborhood: "JP Nagar",
     highlight: "Beginner-friendly morning run",

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MapPreview } from "@/components/map-preview";
+import { getPrimaryEventCtaLabel, getPrimaryEventUrl } from "@/lib/event-links";
 import { getDirectionsUrl, getPlaceSearchUrl } from "@/lib/map-links";
 import { getEventBySlug, getEvents } from "@/lib/server-events";
 
@@ -27,6 +28,9 @@ export default async function EventPage({ params }: EventPageProps) {
   if (!event) {
     notFound();
   }
+
+  const primaryEventUrl = getPrimaryEventUrl(event);
+  const primaryEventCtaLabel = getPrimaryEventCtaLabel(event);
 
   return (
     <main className="relative mx-auto min-h-screen max-w-[1200px] px-4 py-4 sm:px-6 lg:px-8">
@@ -61,6 +65,11 @@ export default async function EventPage({ params }: EventPageProps) {
               <span className="rounded-full bg-[var(--panel-dark)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white">
                 {event.category}
               </span>
+              {event.hiddenEvent || event.discoveredBy === "AI" ? (
+                <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#03111d]">
+                  AI Found
+                </span>
+              ) : null}
               <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
                 {event.highlight}
               </span>
@@ -122,25 +131,37 @@ export default async function EventPage({ params }: EventPageProps) {
                 <p className="mt-3 text-lg font-semibold text-foreground">
                   {event.price}
                 </p>
-                <a
-                  href={event.ticketUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-flex rounded-full bg-[var(--panel-dark)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent)]"
-                >
-                  Open booking flow
-                </a>
+                {primaryEventUrl ? (
+                  <a
+                    href={primaryEventUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-flex rounded-full bg-[var(--panel-dark)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent)]"
+                  >
+                    {primaryEventCtaLabel}
+                  </a>
+                ) : (
+                  <p className="mt-3 text-sm text-[color:var(--muted)]">
+                    No booking or source link is available yet for this event.
+                  </p>
+                )}
               </div>
 
               <div className="surface rounded-[28px] p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
-                  Popularity
+                  {event.hiddenEvent || event.discoveredBy === "AI"
+                    ? "Discovery source"
+                    : "Popularity"}
                 </p>
                 <p className="mt-3 text-lg font-semibold text-foreground">
-                  {event.popularity}% hot
+                  {event.hiddenEvent || event.discoveredBy === "AI"
+                    ? event.source ?? "AI discovery engine"
+                    : `${event.popularity}% hot`}
                 </p>
                 <p className="mt-1 text-sm text-[color:var(--muted)]">
-                  {event.attendees} people already on the list
+                  {event.hiddenEvent || event.discoveredBy === "AI"
+                    ? event.sourceWebsite ?? "Web-discovered Bangalore event"
+                    : `${event.attendees} people already on the list`}
                 </p>
               </div>
             </div>

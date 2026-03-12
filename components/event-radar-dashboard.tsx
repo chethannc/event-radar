@@ -25,6 +25,8 @@ type EventRadarDashboardProps = {
   events: EventItem[];
 };
 
+const EVENTS_PER_PAGE = 9;
+
 function filterByDate(event: EventItem, preset: string) {
   if (preset === "Any day") return true;
   if (preset === "Today") return event.dayLabel === "Friday";
@@ -93,6 +95,7 @@ export function EventRadarDashboard({
   const [datePreset, setDatePreset] = useState("Any day");
   const [budget, setBudget] = useState("Any price");
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? "");
+  const [currentPage, setCurrentPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
@@ -150,17 +153,29 @@ export function EventRadarDashboard({
   const trendingEvents = [...events]
     .sort((left, right) => right.popularity - left.popularity)
     .slice(0, 5);
+  const hiddenEvents = events
+    .filter((event) => event.hiddenEvent || event.discoveredBy === "AI")
+    .sort((left, right) => (right.aiRank ?? right.popularity) - (left.aiRank ?? left.popularity))
+    .slice(0, 6);
   const recommendedEvents = filteredEvents
     .filter((event) => event.recommended)
     .slice(0, 3);
-  const visibleEvents = filteredEvents;
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const visibleEvents = filteredEvents.slice(
+    (safePage - 1) * EVENTS_PER_PAGE,
+    safePage * EVENTS_PER_PAGE,
+  );
   const selectedEvent =
     visibleEvents.find((event) => event.id === selectedEventId) ??
-    visibleEvents[0];
+    filteredEvents.find((event) => event.id === selectedEventId) ??
+    visibleEvents[0] ??
+    filteredEvents[0];
   const initialPrompt = suggestionPrompts[0];
   const aiResponse = buildAiResponse(initialPrompt, recommendedEvents);
 
   function clearFilters() {
+    setCurrentPage(1);
     setSearch("");
     setCategory("All");
     setNeighborhood("All Bengaluru");
@@ -169,6 +184,7 @@ export function EventRadarDashboard({
   }
 
   function applySuggestedFilters(filters: SuggestedFilters) {
+    setCurrentPage(1);
     setSearch(filters.search);
     setCategory(filters.category);
     setNeighborhood(filters.neighborhood);
@@ -268,6 +284,40 @@ export function EventRadarDashboard({
             onSelect={(event) => setSelectedEventId(event.id)}
           />
 
+          {hiddenEvents.length > 0 ? (
+            <section className="space-y-6 py-20">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="max-w-2xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[color:var(--muted)]">
+                    Hidden event engine
+                  </p>
+                  <h2 className="mt-2 text-[30px] font-semibold tracking-[-0.05em] text-foreground lg:text-[36px]">
+                    Hidden Events Discovered by AI
+                  </h2>
+                  <p className="mt-3 max-w-[60ch] text-base leading-7 text-[color:var(--muted)]">
+                    Fresh finds surfaced from community pages, meetup sites,
+                    forums, and public event listings across Bangalore.
+                  </p>
+                </div>
+                <span className="rounded-full bg-[var(--accent-soft)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-strong)]">
+                  AI Found
+                </span>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {hiddenEvents.map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    isHighlighted={selectedEvent?.id === event.id}
+                    onHover={(nextEvent) => setSelectedEventId(nextEvent.id)}
+                    onSelect={(nextEvent) => setSelectedEventId(nextEvent.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="space-y-6 py-20">
             <FilterBar
               search={search}
@@ -280,11 +330,26 @@ export function EventRadarDashboard({
               datePresets={datePresets}
               budgetPresets={budgetPresets}
               activeFilters={activeFilters}
-              onSearchChange={setSearch}
-              onCategoryChange={setCategory}
-              onNeighborhoodChange={setNeighborhood}
-              onDatePresetChange={setDatePreset}
-              onBudgetChange={setBudget}
+              onSearchChange={(value) => {
+                setCurrentPage(1);
+                setSearch(value);
+              }}
+              onCategoryChange={(value) => {
+                setCurrentPage(1);
+                setCategory(value);
+              }}
+              onNeighborhoodChange={(value) => {
+                setCurrentPage(1);
+                setNeighborhood(value);
+              }}
+              onDatePresetChange={(value) => {
+                setCurrentPage(1);
+                setDatePreset(value);
+              }}
+              onBudgetChange={(value) => {
+                setCurrentPage(1);
+                setBudget(value);
+              }}
               onClearFilters={clearFilters}
             />
 
@@ -303,21 +368,49 @@ export function EventRadarDashboard({
                   </p>
                 </div>
                 <p className="text-sm text-[color:var(--muted)]">
-                  {visibleEvents.length} events visible
+                  {filteredEvents.length} events visible
                 </p>
               </div>
 
-              {visibleEvents.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {visibleEvents.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      isHighlighted={selectedEvent?.id === event.id}
-                      onHover={(nextEvent) => setSelectedEventId(nextEvent.id)}
-                      onSelect={(nextEvent) => setSelectedEventId(nextEvent.id)}
-                    />
-                  ))}
+              {filteredEvents.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        isHighlighted={selectedEvent?.id === event.id}
+                        onHover={(nextEvent) => setSelectedEventId(nextEvent.id)}
+                        onSelect={(nextEvent) => setSelectedEventId(nextEvent.id)}
+                      />
+                    ))}
+                  </div>
+
+                  {totalPages > 1 ? (
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-[color:var(--muted)]">
+                        Page {safePage} of {totalPages}
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                          disabled={safePage === 1}
+                          className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm font-medium text-[color:var(--muted)] transition hover:border-[var(--accent)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                          disabled={safePage === totalPages}
+                          className="rounded-full bg-[var(--panel-dark)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="surface flex min-h-[240px] items-center justify-center rounded-[28px] p-6 text-center">
@@ -377,7 +470,7 @@ export function EventRadarDashboard({
             </div>
 
             <MapPreview
-              events={visibleEvents}
+              events={filteredEvents}
               selectedEvent={selectedEvent}
               onSelect={(event) => setSelectedEventId(event.id)}
             />

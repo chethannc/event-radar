@@ -1,7 +1,6 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import { recommendEvents } from "@/lib/openai";
 import {
-  sampleEvents,
   toEventItem,
   type EventItem,
   type EventRecord,
@@ -16,6 +15,62 @@ function isEventCategory(value: string): value is EventRecord["category"] {
     "Food",
     "Networking",
   ].includes(value);
+}
+
+function inferCategory(record: Partial<EventRecord>): EventRecord["category"] {
+  const combined = `${record.title ?? ""} ${record.description ?? ""}`.toLowerCase();
+
+  if (isEventCategory(String(record.category ?? ""))) {
+    return record.category as EventRecord["category"];
+  }
+
+  if (/tech|ai|startup|developer|product|mongodb|grafana|sre|jfrog/.test(combined)) {
+    return "Tech";
+  }
+
+  if (/music|gig|concert|live|dj/.test(combined)) {
+    return "Music";
+  }
+
+  if (/trek|trail|hike|outdoor/.test(combined)) {
+    return "Trekking";
+  }
+
+  if (/run|running|race|marathon|jog/.test(combined)) {
+    return "Running";
+  }
+
+  if (/food|brunch|tasting|chef|dining/.test(combined)) {
+    return "Food";
+  }
+
+  return "Networking";
+}
+
+function inferNeighborhood(location: string) {
+  const normalized = location.toLowerCase();
+
+  if (normalized.includes("koramangala")) return "Koramangala";
+  if (normalized.includes("indiranagar")) return "Indiranagar";
+  if (normalized.includes("mg road")) return "MG Road";
+  if (normalized.includes("whitefield")) return "Whitefield";
+  if (normalized.includes("hsr")) return "HSR Layout";
+  if (normalized.includes("jayanagar")) return "Jayanagar";
+  if (normalized.includes("jakkur")) return "Jakkur";
+  if (normalized.includes("jp nagar")) return "JP Nagar";
+  return "MG Road";
+}
+
+function inferCoordinates(neighborhood: string) {
+  if (neighborhood === "Koramangala") return { lat: 12.9352, lng: 77.6245 };
+  if (neighborhood === "Indiranagar") return { lat: 12.9784, lng: 77.6408 };
+  if (neighborhood === "MG Road") return { lat: 12.9755, lng: 77.6065 };
+  if (neighborhood === "Whitefield") return { lat: 12.9698, lng: 77.7499 };
+  if (neighborhood === "HSR Layout") return { lat: 12.9121, lng: 77.6446 };
+  if (neighborhood === "Jayanagar") return { lat: 12.925, lng: 77.5938 };
+  if (neighborhood === "Jakkur") return { lat: 13.0783, lng: 77.5977 };
+  if (neighborhood === "JP Nagar") return { lat: 12.9063, lng: 77.5857 };
+  return { lat: 12.9716, lng: 77.5946 };
 }
 
 function getFallbackImage(category: EventRecord["category"]) {
@@ -66,56 +121,92 @@ function getFallbackImage(category: EventRecord["category"]) {
   };
 }
 
+function parseStartDate(value?: string) {
+  if (!value) {
+    return "";
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? "" : new Date(timestamp).toISOString();
+}
+
+function addHours(isoString: string, hours: number) {
+  const start = new Date(isoString);
+  start.setHours(start.getHours() + hours);
+  return start.toISOString();
+}
+
 function sanitizeRecord(record: Partial<EventRecord>): EventRecord | null {
-  if (
-    !record.id ||
-    !record.slug ||
-    !record.title ||
-    !record.category ||
-    !isEventCategory(record.category) ||
-    !record.startDate ||
-    !record.endDate ||
-    !record.location ||
-    !record.venue ||
-    !record.price ||
-    !record.description ||
-    typeof record.attendees !== "number" ||
-    typeof record.popularity !== "number" ||
-    !record.neighborhood ||
-    !record.highlight ||
-    typeof record.recommended !== "boolean" ||
-    !record.mapTop ||
-    !record.mapLeft ||
-    !record.ticketUrl ||
-    !record.coordinates
-  ) {
+  if (!record.id || !record.slug || !record.title) {
     return null;
   }
 
-  const fallbackImage = getFallbackImage(record.category);
+  const category = inferCategory(record);
+  const startDate =
+    parseStartDate(record.startDate) ||
+    parseStartDate((record as { date?: string }).date) ||
+    "";
+
+  const isAiHidden = record.hiddenEvent === true || record.discoveredBy === "AI";
+  const location = record.location ?? record.venue ?? "";
+  const neighborhood = record.neighborhood ?? inferNeighborhood(location);
+  const coordinates = record.coordinates ?? inferCoordinates(neighborhood);
+
+  const hasMinimumFields =
+    startDate &&
+    location &&
+    coordinates &&
+    typeof coordinates.lat === "number" &&
+    typeof coordinates.lng === "number";
+
+  if (!hasMinimumFields && !isAiHidden) {
+    return null;
+  }
+
+  if (!hasMinimumFields && isAiHidden) {
+    return null;
+  }
+
+  const fallbackImage = getFallbackImage(category);
 
   return {
     id: record.id,
     slug: record.slug,
     title: record.title,
-    category: record.category,
-    startDate: record.startDate,
-    endDate: record.endDate,
-    location: record.location,
-    venue: record.venue,
-    price: record.price,
-    description: record.description,
-    attendees: record.attendees,
-    popularity: record.popularity,
-    neighborhood: record.neighborhood,
-    highlight: record.highlight,
-    recommended: record.recommended,
-    mapTop: record.mapTop,
-    mapLeft: record.mapLeft,
-    ticketUrl: record.ticketUrl,
+    category,
+    startDate,
+    endDate:
+      parseStartDate(record.endDate) || addHours(startDate || new Date().toISOString(), 2),
+    location,
+    venue: record.venue ?? location,
+    price: record.price ?? "See source",
+    description: record.description ?? "AI-discovered Bangalore event.",
+    attendees:
+      typeof record.attendees === "number" ? record.attendees : 87,
+    popularity:
+      typeof record.popularity === "number"
+        ? record.popularity
+        : typeof record.aiRank === "number"
+          ? record.aiRank
+          : 58,
+    neighborhood,
+    highlight: record.highlight ?? (isAiHidden ? "Hidden Event" : "Curated pick"),
+    recommended:
+      typeof record.recommended === "boolean"
+        ? record.recommended
+        : isAiHidden,
+    mapTop: record.mapTop ?? "50%",
+    mapLeft: record.mapLeft ?? "50%",
+    ticketUrl: record.ticketUrl ?? record.sourceWebsite ?? "#",
     imageUrl: record.imageUrl ?? fallbackImage.imageUrl,
     imageAlt: record.imageAlt ?? fallbackImage.imageAlt,
-    coordinates: record.coordinates,
+    source: record.source ?? (isAiHidden ? "Hidden Event Discovery Engine" : "Curated"),
+    sourceWebsite: record.sourceWebsite,
+    discoveredBy: record.discoveredBy,
+    tags: record.tags ?? [],
+    hiddenEvent: record.hiddenEvent ?? false,
+    aiRank: record.aiRank,
+    coordinates,
   };
 }
 
@@ -123,7 +214,7 @@ export async function getEvents(): Promise<EventItem[]> {
   const db = getAdminDb();
 
   if (!db) {
-    return sampleEvents.map(toEventItem);
+    return [];
   }
 
   try {
@@ -138,11 +229,12 @@ export async function getEvents(): Promise<EventItem[]> {
       .filter((event): event is EventRecord => Boolean(event))
       .map(toEventItem);
 
-    return firestoreEvents.length > 0
-      ? firestoreEvents
-      : sampleEvents.map(toEventItem);
+    return [...firestoreEvents].sort(
+      (left, right) =>
+        new Date(left.startDate).getTime() - new Date(right.startDate).getTime(),
+    );
   } catch {
-    return sampleEvents.map(toEventItem);
+    return [];
   }
 }
 

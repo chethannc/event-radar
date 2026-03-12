@@ -22,8 +22,8 @@ export function TrendingStrip({ events, onSelect }: TrendingStripProps) {
           </h2>
         </div>
         <p className="hidden max-w-md text-sm leading-7 text-[color:var(--muted)] md:block">
-          A horizontally scrollable rail designed like a startup discovery feed,
-          with popularity built into the visual hierarchy.
+          High-signal events ranked by recent interest, attendee momentum, and
+          category relevance across Bangalore.
         </p>
       </div>
 
