@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 AI Event Radar
 
-## Getting Started
+AI-powered event discovery platform that automatically finds events happening around the city and displays them in one place.
 
-First, run the development server:
+🌐 Live Demo  
+https://event-radar-chethanncs-projects.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📌 Problem
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Interesting events are scattered across multiple platforms like event websites, communities, and social media.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+It becomes difficult for users to discover them easily.
 
-## Learn More
+AI Event Radar solves this by automatically discovering and organizing events in a single platform.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## ✨ Features
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+• 🔎 AI-powered event discovery  
+• 🌐 Crawls multiple sources for hidden events  
+• 🧠 Extracts event details using AI  
+• 📅 Displays events in a clean UI  
+• 🎟 Redirects to original booking platform  
+• 📍 Integrated map directions  
+• ☁️ Cloud deployment
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🖥 Screenshots
+<img width="1322" height="940" alt="image" src="https://github.com/user-attachments/assets/d1881a1d-0580-40ce-b512-9d9ebad0bc43" />
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Event Listing
+<img width="924" height="868" alt="image" src="https://github.com/user-attachments/assets/c8638e8d-24cf-4b35-b6a2-585314b39db2" />
+
+### Event Details
+<img width="1000" height="890" alt="image" src="https://github.com/user-attachments/assets/dda96b48-86f6-4f42-8bdb-2a5b386bd004" />
+
+### Map Directions
+<img width="977" height="740" alt="image" src="https://github.com/user-attachments/assets/65397f2c-50a9-4899-a22e-4de58eb32b52" />
+
+---
+
+## 🏗 Main Flow
+
+1. Page load
+User -> Next.js page -> server-events -> Firestore -> UI renders dashboard
+
+2. AI recommendation
+User prompt -> /api/recommend -> openai.ts
+-> OpenAI or fallback ranking -> recommended events -> UI updates
+
+3. Scheduled discovery
+Vercel Cron -> /api/discovery/run -> search.ts -> extractor.ts
+-> normalize/dedupe/geocode -> Firestore
+                         
